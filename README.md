@@ -2,7 +2,7 @@
 
 Claude Code TTS and voice hook setup for WSL2 — hooks, scripts, and config for speech input and spoken responses.
 
-Tested on WSL2 with WSLg (Windows 11) and Claude Code CLI.
+Tested on WSL2 + WSLg on Windows 11 with Claude Code CLI. Windows 10 is not supported.
 
 ## What It Does
 
@@ -116,7 +116,7 @@ After significant time debugging on WSL2 without WSLg, WSLg + edge-tts + ffplay 
 
 **`Popen` + `start_new_session=True` over `subprocess.run`:** Claude Code hook timeouts are 30 seconds. A blocking `subprocess.run` for audio playback means any response longer than ~27 seconds gets cut off mid-speech when the hook process is killed. Detaching ffplay into its own process group with `start_new_session=True` lets audio finish independently of the hook. The hook only needs to cover edge-tts generation (~2-3 seconds) — ffplay plays on after the hook exits.
 
-**WSLg is a hard requirement.** If `unix:/mnt/wslg/runtime-dir/pulse/native` doesn't exist on your machine, this setup will not work. WSLg requires Windows 11 with a current WSL2 release. There is no reliable drop-in alternative for WSL2 on Windows 10.
+**WSLg is a hard requirement.** If `unix:/mnt/wslg/runtime-dir/pulse/native` doesn't exist on your machine, this setup will not work. This setup requires Windows 11 with WSL2 and a current WSL release. Windows 10 is not supported.
 
 ## Known Limitations
 
