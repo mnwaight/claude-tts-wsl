@@ -106,6 +106,17 @@ pkill ffplay
 edge-tts --voice en-US-JennyNeural --text "Hello" --write-media /tmp/test.mp3 && ffplay -nodisp -autoexit /tmp/test.mp3
 ```
 
+## macOS (Untested)
+
+This setup has not been tested on macOS. Theoretically it should work with minimal changes:
+
+- Install dependencies via Homebrew instead of apt: `brew install ffmpeg sox` and `pip install edge-tts`
+- Voice input should work natively — macOS Claude Code uses the system microphone directly, no sox PulseAudio bridge needed
+- Remove the `PULSE_SERVER` and `DISPLAY` env vars from `settings.json` — they are WSL-specific and not needed on Mac
+- Everything else (hooks, TTS logic, Popen detach) is standard Python and bash and should be portable
+
+No guarantees. If you get it working on Mac, please open a PR with any fixes.
+
 ## Why This Stack
 
 After significant time debugging on WSL2 without WSLg, WSLg + edge-tts + ffplay is the only approach that worked reliably. Key decisions:
