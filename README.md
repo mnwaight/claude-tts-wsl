@@ -106,6 +106,18 @@ pkill ffplay
 edge-tts --voice en-US-JennyNeural --text "Hello" --write-media /tmp/test.mp3 && ffplay -nodisp -autoexit /tmp/test.mp3
 ```
 
+## Why This Stack
+
+After significant time debugging on WSL2 without WSLg, WSLg + edge-tts + ffplay is the only approach that worked reliably. Key decisions:
+
+**edge-tts over local TTS engines (piper, espeak, etc.):** Local engines had unacceptable latency — even a short response took several seconds before audio started. edge-tts calls Microsoft's cloud API and returns audio in under 2 seconds consistently.
+
+**ffplay over paplay/RDPSink:** On machines without WSLg, the common workaround is routing audio through Windows via an RDP audio sink using `paplay --device=RDPSink`. This requires manually unsuspending the sink before each playback, introduces sync issues, and still had latency problems. On WSLg, the PulseAudio socket is available natively and ffplay plays back with no additional setup.
+
+**`Popen` + `start_new_session=True` over `subprocess.run`:** Claude Code hook timeouts are 30 seconds. A blocking `subprocess.run` for audio playback means any response longer than ~27 seconds gets cut off mid-speech when the hook process is killed. Detaching ffplay into its own process group with `start_new_session=True` lets audio finish independently of the hook. The hook only needs to cover edge-tts generation (~2-3 seconds) — ffplay plays on after the hook exits.
+
+**WSLg is a hard requirement.** If `unix:/mnt/wslg/runtime-dir/pulse/native` doesn't exist on your machine, this setup will not work. WSLg requires Windows 11 with a current WSL2 release. There is no reliable drop-in alternative for WSL2 on Windows 10.
+
 ## Known Limitations
 
 - During long-running Bash or tool calls there is silence — `PreToolUse` fires before the tool starts but there is no mid-tool audio progress.
