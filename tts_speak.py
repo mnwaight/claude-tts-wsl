@@ -1,8 +1,11 @@
 #!/usr/bin/env python3
 """Shared TTS logic for Claude Code hooks. Called with: path session_id [tool_name] [tool_input_json]"""
-import sys, json, re, subprocess, os
+import sys, json, re, subprocess, os, shutil
 
 STATE_FILE = '/tmp/tts_state.json'
+WIN_TTS_MP3   = '/mnt/c/Windows/Temp/claude-tts-speech.mp3'
+WIN_PLAY_PS1  = 'C:\\Windows\\Temp\\claude_tts_play.ps1'
+WIN_STOP_PS1  = 'C:\\Windows\\Temp\\claude_tts_stop.ps1'
 
 TOOL_LABELS = {
     'Bash':                                    'Running a command.',
@@ -12,7 +15,7 @@ TOOL_LABELS = {
     'Agent':                                   'Launching a sub-agent.',
     'WebFetch':                                'Fetching a page.',
     'WebSearch':                               'Searching the web.',
-    'mcp__playwright__browser_navigate':       None,   # derived from URL below
+    'mcp__playwright__browser_navigate':       None,
     'mcp__playwright__browser_evaluate':       'Checking the page.',
     'mcp__playwright__browser_snapshot':       'Reading the page.',
     'mcp__playwright__browser_click':          'Clicking on the page.',
@@ -26,8 +29,8 @@ def tool_description(tool_name, tool_input=None):
         try:
             inp = tool_input if isinstance(tool_input, dict) else json.loads(tool_input)
             url = inp.get('url', '').lower()
-            if 'telescope' in url:   return 'Checking Telescope.'
-            if 'horizon' in url:     return 'Checking Horizon.'
+            if 'telescope' in url:    return 'Checking Telescope.'
+            if 'horizon' in url:      return 'Checking Horizon.'
             if 'cornerstone2' in url: return 'Opening CS2.'
             return 'Navigating the browser.'
         except Exception:
@@ -60,6 +63,10 @@ def speak(path, session_id, tool_name=None, tool_input=None):
     except Exception:
         return
 
+    # On first run (no saved state), skip history — only speak the latest entry
+    if last_idx == -1 and len(lines) > 1:
+        last_idx = len(lines) - 2
+
     chunks = []
     for i, entry in enumerate(lines):
         if i <= last_idx:
@@ -78,7 +85,6 @@ def speak(path, session_id, tool_name=None, tool_input=None):
 
     save_last_idx(session_id, len(lines) - 1)
 
-    # If no new text and a tool is about to run, announce it
     if not chunks:
         desc = tool_description(tool_name, tool_input) if tool_name else ''
         if not desc:
@@ -107,17 +113,20 @@ def speak(path, session_id, tool_name=None, tool_input=None):
     if result.returncode != 0:
         return
 
-    # Kill any audio still playing from a previous hook before starting new
-    subprocess.run(['pkill', '-x', 'ffplay'], capture_output=True)
+    # Kill any previous TTS playback
+    subprocess.run(['pkill', '-f', 'claude_tts_play'], capture_output=True)
 
-    env = os.environ.copy()
-    env['PULSE_SERVER'] = 'unix:/mnt/wslg/runtime-dir/pulse/native'
-    # Detach ffplay into its own process group so it outlives the hook timeout
+    # Copy to Windows-accessible path and play via Windows MCI
+    try:
+        shutil.copy2(tts_tmp, WIN_TTS_MP3)
+    except Exception:
+        return
+
     subprocess.Popen(
-        ['ffplay', '-nodisp', '-autoexit', tts_tmp],
+        ['powershell.exe', '-NonInteractive', '-WindowStyle', 'Hidden',
+         '-File', WIN_PLAY_PS1, '-FilePath', 'C:\\Windows\\Temp\\claude-tts-speech.mp3'],
         stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
         start_new_session=True,
-        env=env
     )
 
 if __name__ == '__main__':
