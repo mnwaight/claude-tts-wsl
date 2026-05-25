@@ -1,0 +1,47 @@
+{
+  "env": {
+    "PULSE_SERVER": "unix:/mnt/wslg/runtime-dir/pulse/native",
+    "DISPLAY": ":0"
+  },
+  "hooks": {
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "/home/matthew/.claude/hooks/stop-audio.sh",
+            "timeout": 5
+          }
+        ]
+      }
+    ],
+    "PreToolUse": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "/home/matthew/.claude/hooks/pre-tool-speak.sh",
+            "timeout": 30
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "/home/matthew/.claude/hooks/speak-response.sh",
+            "timeout": 30
+          }
+        ]
+      }
+    ]
+  },
+  "voice": {
+    "enabled": true,
+    "mode": "hold",
+    "autoSubmit": true
+  },
+  "voiceEnabled": true
+}
